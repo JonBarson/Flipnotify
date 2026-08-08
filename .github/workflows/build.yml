@@ -31,16 +31,28 @@ jobs:
         with:
           name: FlipNotify-flipper
           path: flipper/dist/flipnotify.fap
+  wifi_toolkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: python -m pip install --upgrade pip ufbt
+      - run: cd wifi_toolkit/flipper && ufbt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WiFiToolkit-flipper
+          path: wifi_toolkit/flipper/dist/wifi_toolkit.fap
   release:
-    needs: [ android, flipper ]
+    needs: [ android, flipper, wifi_toolkit ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
         with:
           path: dist
-      - name: Publish APK and FAP to "latest" release
+      - name: Publish artifacts to "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete latest --repo ${{ github.repository }} --cleanup-tag --yes || true
-          gh release create latest dist/FlipNotify-android/app-debug.apk dist/FlipNotify-flipper/flipnotify.fap --repo ${{ github.repository }} -t "Latest build" -n "Automated APK + FAP build"
+          gh release create latest dist/FlipNotify-android/app-debug.apk dist/FlipNotify-flipper/flipnotify.fap dist/WiFiToolkit-flipper/wifi_toolkit.fap --repo ${{ github.repository }} -t "Latest build" -n "Automated build (APK + FAPs)"
