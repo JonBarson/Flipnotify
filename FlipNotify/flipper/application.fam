@@ -1,0 +1,9 @@
+App(
+    appid="flipnotify",
+    name="FlipNotify",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="flipnotify_app",
+    stack_size=4 * 1024,
+    fap_category="Tools",
+    fap_version="0.1.0",
+)

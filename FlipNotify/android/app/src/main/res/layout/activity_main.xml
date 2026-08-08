@@ -1,0 +1,7 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:padding="24dp" android:layout_width="match_parent" android:layout_height="match_parent">
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FlipNotify" android:textSize="28sp" android:textStyle="bold"/>
+    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="Not connected"/>
+    <Button android:id="@+id/notificationAccess" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="Enable notification access"/>
+    <Button android:id="@+id/connect" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Scan / connect Flipper"/>
+    <Switch android:id="@+id/enabled" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Forward notifications" android:checked="true"/>
+</LinearLayout>
