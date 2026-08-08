@@ -1,0 +1,11 @@
+App(
+    appid="wifi_toolkit",
+    name="WiFi Toolkit",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="wifi_toolkit_app",
+    stack_size=4 * 1024,
+    fap_category="GPIO",
+    fap_description="Passive WiFi scan and connection manager via the WiFi Devboard",
+    fap_version="0.1",
+    requires=["gui"],
+)
