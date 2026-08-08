@@ -42,5 +42,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release delete latest --cleanup-tag --yes || true
-          gh release create latest dist/FlipNotify-android/app-debug.apk dist/FlipNotify-flipper/flipnotify.fap -t "Latest build" -n "Automated APK + FAP build"
+          gh release delete latest --repo ${{ github.repository }} --cleanup-tag --yes || true
+          gh release create latest dist/FlipNotify-android/app-debug.apk dist/FlipNotify-flipper/flipnotify.fap --repo ${{ github.repository }} -t "Latest build" -n "Automated APK + FAP build"
