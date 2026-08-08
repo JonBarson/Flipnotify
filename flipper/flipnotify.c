@@ -4,7 +4,7 @@
 #include <input/input.h>
 #include <notification/notification_messages.h>
 #include <bt/bt_service/bt.h>
-#include <ble_glue/profiles/serial_profile.h>
+#include <profiles/serial_profile.h>
 #include <string.h>
 
 #define MAX_TEXT 220
