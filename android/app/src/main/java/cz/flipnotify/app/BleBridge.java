@@ -34,6 +34,36 @@ public final class BleBridge {
         scanCallback = null;
     }
 
+    // The Flipper advertises its name ("Flipper Xxxx") and a 16-bit service UUID (0x3080 | hw_color).
+    // Match on either, so a missing device name in the scan record does not hide it.
+    @SuppressLint("MissingPermission")
+    private static boolean isFlipper(ScanResult result) {
+        ScanRecord rec = result.getScanRecord();
+        String name = rec != null ? rec.getDeviceName() : null;
+        if(name == null) { try { name = result.getDevice().getName(); } catch(Exception ignored) {} }
+        if(name != null && name.startsWith("Flipper")) return true;
+        if(rec != null && rec.getServiceUuids() != null) {
+            for(android.os.ParcelUuid pu : rec.getServiceUuids()) {
+                UUID u = pu.getUuid();
+                // 16-bit UUIDs use the Bluetooth base UUID: 0000xxxx-0000-1000-8000-00805F9B34FB
+                if(u.getLeastSignificantBits() == 0x800000805f9b34fbL
+                        && (u.getMostSignificantBits() & 0xFFFFFFFFL) == 0x1000L) {
+                    int s = (int)((u.getMostSignificantBits() >>> 32) & 0xFFFF);
+                    if((s & 0xFFF0) == 0x3080) return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @SuppressLint("MissingPermission")
+    private static String nameOf(ScanResult result) {
+        ScanRecord rec = result.getScanRecord();
+        String name = rec != null ? rec.getDeviceName() : null;
+        if(name == null) { try { name = result.getDevice().getName(); } catch(Exception ignored) {} }
+        return name == null ? "Flipper" : name;
+    }
+
     @SuppressLint("MissingPermission")
     public void scanAndConnect(Runnable changed) {
         onChanged = changed;
@@ -42,23 +72,20 @@ public final class BleBridge {
         if(adapter == null || !adapter.isEnabled()) { status = "Bluetooth is off"; notifyChanged(); return; }
         scanner = adapter.getBluetoothLeScanner();
         if(scanner == null) { status = "Bluetooth is off"; notifyChanged(); return; }
-        // Clear any previous scan first so repeated taps do not leak scanner registrations,
-        // which is what causes onScanFailed with error 2 (APPLICATION_REGISTRATION_FAILED).
         stopScan();
         status = "Scanning..."; notifyChanged();
         ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
-        // The Flipper advertises only a 16-bit service UUID (0x3080 | hw_color) plus its name;
-        // the 128-bit Serial UUID is exposed only after connecting, so scan unfiltered and match
-        // the Flipper by its advertised name.
+        final java.util.Set<String> seen = new java.util.HashSet<>();
         scanCallback = new ScanCallback() {
             @SuppressLint("MissingPermission") @Override public void onScanResult(int callbackType, ScanResult result) {
-                String name = null;
-                if(result.getScanRecord() != null) name = result.getScanRecord().getDeviceName();
-                if(name == null) name = result.getDevice().getName();
-                if(name == null || !name.startsWith("Flipper")) return;
-                stopScan();
-                status = "Connecting " + name; notifyChanged();
-                gatt = result.getDevice().connectGatt(context, false, callback);
+                seen.add(result.getDevice().getAddress());
+                if(isFlipper(result)) {
+                    stopScan();
+                    status = "Connecting " + nameOf(result); notifyChanged();
+                    gatt = result.getDevice().connectGatt(context, false, callback);
+                    return;
+                }
+                status = "Scanning... (" + seen.size() + " devices)"; notifyChanged();
             }
             @Override public void onScanFailed(int errorCode) { stopScan(); status = "Scan failed: " + errorCode; notifyChanged(); }
         };
@@ -67,10 +94,9 @@ public final class BleBridge {
         } catch(Exception e) {
             scanCallback = null; status = "Scan error"; notifyChanged(); return;
         }
-        // Give up after 20s so a fruitless scan does not run (and leak) forever.
         final ScanCallback started = scanCallback;
         handler.postDelayed(() -> {
-            if(scanCallback == started) { stopScan(); status = "Flipper not found"; notifyChanged(); }
+            if(scanCallback == started) { stopScan(); status = "No Flipper found (" + seen.size() + " devices seen)"; notifyChanged(); }
         }, 20000);
     }
 
