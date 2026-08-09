@@ -61,7 +61,7 @@ static void saveCred(const String& ssid, const String& pass) {
   int idx = savedIndex(ssid);
   if(idx < 0) {
     idx = savedCount();
-    if(idx >= MAX_SAVED) return; // full
+    if(idx >= MAX_SAVED) return;
     setSavedCount(idx + 1);
   }
   prefs.putString(kS(idx).c_str(), ssid);
@@ -83,7 +83,7 @@ static void deleteCred(const String& ssid) {
 
 // ---------- commands ----------
 static void cmdScan() {
-  int n = WiFi.scanNetworks(false, true); // blocking, show hidden
+  int n = WiFi.scanNetworks(false, true);
   if(n < 0) { line("SCAN_ERROR"); return; }
   line(String("SCAN_BEGIN|") + n);
   for(int i = 0; i < n; i++) {
@@ -165,6 +165,10 @@ static void process(String s) {
     String ssid = q < 0 ? rest : rest.substring(0, q);
     String pass = q < 0 ? "" : rest.substring(q + 1);
     cmdConnect(ssid, pass);
+  } else if(cmd == "SAVED_CONNECT") {
+    int idx = savedIndex(rest);
+    if(idx < 0) line("STATUS|ERROR|NO_SAVED");
+    else cmdConnect(rest, prefs.getString(kP(idx).c_str(), ""));
   } else if(cmd == "DISCONNECT") {
     WiFi.disconnect();
     line("STATUS|DISCONNECTED");
@@ -176,7 +180,17 @@ static void process(String s) {
     cmdSavedList();
   } else if(cmd == "SAVED_DELETE") {
     deleteCred(rest);
-    line(String("SAVED_DELETED|") + sanitize(rest));
+    cmdSavedList();
+  } else if(cmd == "SAVED_AUTO") {
+    int q = rest.indexOf('|');
+    String ssid = q < 0 ? rest : rest.substring(0, q);
+    String v = q < 0 ? "" : rest.substring(q + 1);
+    int idx = savedIndex(ssid);
+    if(idx >= 0) prefs.putInt(kA(idx).c_str(), v == "1" ? 1 : 0);
+    cmdSavedList();
+  } else if(cmd == "SAVED_CLEAR") {
+    setSavedCount(0);
+    line("SAVED_CLEARED");
   } else if(cmd == "AUTOCONNECT") {
     autoConnectEnabled = (rest == "1");
     prefs.putInt("auto", autoConnectEnabled ? 1 : 0);
@@ -197,7 +211,6 @@ void setup() {
   autoConnectEnabled = prefs.getInt("auto", 1) != 0;
   rx.reserve(RX_MAX);
 
-  // Optional: reconnect to last saved network on boot.
   if(autoConnectEnabled) {
     String last = prefs.getString("last", "");
     int idx = last.length() ? savedIndex(last) : -1;
@@ -219,7 +232,7 @@ void loop() {
       process(cur);
     } else {
       if(rx.length() < RX_MAX) rx += c;
-      else rx = ""; // overflow: drop the malformed line, keep buffer bounded
+      else rx = "";
     }
   }
 }
