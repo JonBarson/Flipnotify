@@ -81,7 +81,6 @@ typedef struct {
     int analyzer_index;
     int settings_index;
 
-    // connect target / keyboard
     char target_ssid[SSID_LEN];
     char password[64];
     int pw_len;
@@ -90,7 +89,6 @@ typedef struct {
     bool kb_shift;
     bool kb_show;
 
-    // current connection
     bool cur_connected;
     char cur_state[16];
     char cur_ssid[SSID_LEN];
@@ -100,7 +98,6 @@ typedef struct {
     int cur_rssi;
     int cur_channel;
 
-    // signal monitor
     char mon_ssid[SSID_LEN];
     char mon_bssid[18];
     int mon_channel;
@@ -108,7 +105,6 @@ typedef struct {
     int rssi_hist_len;
     bool mon_have;
 
-    // settings / version
     bool auto_reconnect;
     char esp_fw[16];
     char esp_proto[8];
@@ -143,6 +139,12 @@ static int split_pipe(char* s, char** out, int max) {
 }
 
 static int kb_cols(int row) { return row < KB_ROWS ? KB_COLS : KB_ACTIONS; }
+
+static int clampi(int v, int lo, int hi) {
+    if(v < lo) v = lo;
+    if(v > hi) v = hi;
+    return v;
+}
 
 static void rssi_push(App* app, int v) {
     if(app->rssi_hist_len < RSSI_HIST) {
@@ -432,7 +434,7 @@ static void draw_analyzer_menu(Canvas* c, App* app) {
 }
 
 static void draw_signal_monitor(Canvas* c, App* app) {
-    char l[40];
+    char l[48];
     canvas_set_font(c, FontSecondary);
     snprintf(l, sizeof(l), "%s  Ch %d", app->mon_ssid, app->mon_channel);
     canvas_draw_str(c, 2, 8, l);
@@ -443,10 +445,8 @@ static void draw_signal_monitor(Canvas* c, App* app) {
     canvas_draw_str(c, 2, 20, l);
     int y_top = 24, y_bot = 62;
     for(int i = 1; i < app->rssi_hist_len; i++) {
-        int r0 = app->rssi_hist[i - 1];
-        int r1 = app->rssi_hist[i];
-        if(r0 < -90) r0 = -90; if(r0 > -30) r0 = -30;
-        if(r1 < -90) r1 = -90; if(r1 > -30) r1 = -30;
+        int r0 = clampi(app->rssi_hist[i - 1], -90, -30);
+        int r1 = clampi(app->rssi_hist[i], -90, -30);
         int y0 = y_bot - ((r0 + 90) * (y_bot - y_top)) / 60;
         int y1 = y_bot - ((r1 + 90) * (y_bot - y_top)) / 60;
         int x0 = 4 + (i - 1) * 3;
@@ -464,7 +464,9 @@ static void draw_channel_view(Canvas* c, App* app) {
         if(ch >= 1 && ch <= 14) counts[ch]++;
     }
     int mx = 1;
-    for(int ch = 1; ch <= 13; ch++) if(counts[ch] > mx) mx = counts[ch];
+    for(int ch = 1; ch <= 13; ch++) {
+        if(counts[ch] > mx) mx = counts[ch];
+    }
     for(int ch = 1; ch <= 13; ch++) {
         int x = 4 + (ch - 1) * 9;
         int h = (counts[ch] * 34) / mx;
@@ -481,7 +483,7 @@ static void draw_settings(Canvas* c, App* app) {
     const char* items[4] = {l0, "Reset saved WiFi", "ESP32 version", "Back"};
     draw_list(c, items, 4, app->settings_index, 24);
     if(app->esp_fw[0]) {
-        char v[28];
+        char v[40];
         snprintf(v, sizeof(v), "FW %s  proto %s", app->esp_fw, app->esp_proto);
         canvas_draw_str(c, 2, 63, v);
     }
